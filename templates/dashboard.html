@@ -14,6 +14,7 @@
             </select>
         </div>
         <button type="submit" class="btn btn-primary mb-2">Consultar</button>
+        <a href="{{ url_for('exportar_excel', tabla=tabla_seleccionada) }}" class="btn btn-success mb-2 ml-2">Exportar a Excel</a>
     </form>
     <div class="table-responsive">
         <table class="table table-striped table-bordered table-hover">
@@ -69,44 +70,8 @@
     </div>
 </div>
 
-<!-- Popup de error -->
-<div id="error-popup" class="alert alert-danger alert-dismissible fade" role="alert" style="display: none; position: fixed; top: 20px; right: 20px; z-index: 1050;">
-    <span id="error-popup-message"></span>
-    <button type="button" class="btn-close" aria-label="Close"></button>
-</div>
-
-<style>
-    .error {
-        color: #dc3545;
-        background-color: #f8d7da;
-        border-left: 4px solid #dc3545;
-        padding: 5px 10px;
-        border-radius: 4px;
-    }
-
-    .fade {
-        transition: opacity 0.5s ease-in-out;
-    }
-
-    .alert.show {
-        display: block;
-        opacity: 1;
-    }
-</style>
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Auto-hide success messages after 2 seconds
-    setTimeout(function() {
-        const successMessages = document.querySelectorAll(".alert-success");
-        successMessages.forEach(function(message) {
-            message.classList.add("fade");
-            setTimeout(function() {
-                message.remove();
-            }, 500);
-        });
-    }, 2000);
-
     // Manejar el evento de procesamiento de la transferencia
     const procesarBtns = document.querySelectorAll('.procesar-btn');
     procesarBtns.forEach(function(button) {
@@ -127,43 +92,41 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert("Transferencia procesada correctamente.");
+                    mostrarMensaje("Transferencia procesada correctamente.", "success");
                     row.remove();
                 } else {
-                    showErrorPopup(data.message);
+                    mostrarMensaje(data.message, "danger");
                     button.disabled = false;
                 }
             })
             .catch(error => {
                 console.error("Error:", error);
-                showErrorPopup("Error en la solicitud al servidor");
+                mostrarMensaje("Error en la solicitud al servidor", "danger");
                 button.disabled = false;
             });
         });
     });
 
-    function showErrorPopup(message) {
-        const errorPopup = document.getElementById('error-popup');
-        const errorMessage = document.getElementById('error-popup-message');
-        errorMessage.textContent = message;
-        errorPopup.style.display = 'block';  // Asegura que el popup se muestre
-        errorPopup.classList.add('show');
+    function mostrarMensaje(mensaje, categoria) {
+        $('#messageContent').text(mensaje);
+        if (categoria == 'success') {
+            $('#messageModalLabel').text("Éxito");
+            $('#messageModal .modal-content').addClass('bg-success text-white');
+        } else if (categoria == 'danger') {
+            $('#messageModalLabel').text("Error");
+            $('#messageModal .modal-content').addClass('bg-danger text-white');
+        } else if (categoria == 'warning') {
+            $('#messageModalLabel').text("Advertencia");
+            $('#messageModal .modal-content').addClass('bg-warning text-dark');
+        } else if (categoria == 'info') {
+            $('#messageModalLabel').text("Información");
+            $('#messageModal .modal-content').addClass('bg-info text-white');
+        }
+        $('#messageModal').modal('show');
         setTimeout(function() {
-            errorPopup.classList.remove('show');
-            setTimeout(function() {
-                errorPopup.style.display = 'none';
-            }, 500);
-        }, 3000);
+            $('#messageModal').modal('hide');
+        }, 2500);
     }
-
-    // Manejo del botón de cierre del popup
-    document.querySelector('#error-popup .btn-close').addEventListener('click', function() {
-        const errorPopup = document.getElementById('error-popup');
-        errorPopup.classList.remove('show');
-        setTimeout(function() {
-            errorPopup.style.display = 'none';
-        }, 500);
-    });
 });
 </script>
 {% endblock %}

@@ -1,4 +1,4 @@
-from flask import session
+from flask import session, flash
 import app
 import log_save
 import get_token

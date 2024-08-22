@@ -9,16 +9,16 @@ import log_save
 def process_file_send(json_data, tabla):
     try:
         # Obtener el access token
+        print(json_data, tabla)
         access_token = get_access_token()
         headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
-        api_url = app.API
+        api_url = app.API_QA
 
         # Enviar la solicitud a la API
         response = requests.post(api_url, json=json_data, headers=headers)
-
+        print(response.text)
         if response.status_code == 200:
             response_json = response.json()
-
             # Procesar elementos exitosos
             if response_json.get("procesados"):
                 for item in response_json["procesados"]:
@@ -57,9 +57,9 @@ def get_access_token():
 
     post_data = {
         "grant_type": "client_credentials",
-        "client_id": app.CLIENT_ID_MULESOFT_PROD,
-        "client_secret": app.CLIENT_SECRET_MULESOFT_PROD,
-        "resource": app.RESOURCE_MULESOFT_PROD
+        "client_id": app.CLIENT_ID_MULESOFT,
+        "client_secret": app.CLIENT_SECRET_MULESOFT,
+        "resource": app.RESOURCE_MULESOFT
     }
 
     while retries < max_retries:

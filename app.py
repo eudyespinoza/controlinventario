@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
+import openpyxl
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, send_file
 import log_save
 import sqlite3
 from flask_session import Session
@@ -7,6 +8,9 @@ import configparser
 import auth
 import get_tr_out_in
 import procesar
+import requests
+import pandas as pd
+import io
 
 
 # Leer configuración desde config.ini
@@ -71,7 +75,8 @@ DB_PATH = 'log.db'
 @app.route('/')
 def login():
     if 'user' in session:
-        return redirect(url_for('dashboard'))
+        user = session.get('user')
+        return render_template('index.html', user=user)
     return render_template('login.html')
 
 
@@ -80,21 +85,20 @@ def login_post():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-
         authenticated, error = auth.ldap_authenticate(username, password)
         if not authenticated:
-            flash(error, 'danger')
+            flash("Credenciales inválidas", 'danger')
             log_save.log_message(f"credenciales incorrectas usuario: {username}")
             return redirect(url_for('login'))
 
         authorized, error = auth.get_authorization(username)
         if not authorized:
-            flash(error, 'danger')
+            flash("Usuario no autorizado", 'danger')
             log_save.log_message(f"Usuario {username} no autorizado")
             return redirect(url_for('login'))
 
         log_save.log_message(f"Inicio de sesion exitoso usuario: {session.get('user')}")
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('login'))
 
     return render_template('login.html')
 
@@ -111,6 +115,28 @@ def dashboard():
         columnas, datos = get_tr_out_in.obtener_datos_tr_in()
 
     return render_template('dashboard.html', columnas=columnas, datos=datos, tabla_seleccionada=tabla_seleccionada)
+
+
+@app.route('/procesadas')
+def procesadas():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+
+    tabla_seleccionada = request.args.get('tabla', 'TR_OUT')
+
+    if tabla_seleccionada == 'TR_OUT':
+        columnas, datos = get_tr_out_in.obtener_todas_tr_out_procesadas()
+    else:
+        columnas, datos = get_tr_out_in.obtener_todas_tr_in_procesadas()
+
+    return render_template('procesadas.html', columnas=columnas, datos=datos, tabla_seleccionada=tabla_seleccionada)
+
+
+@app.route('/ajuste')
+def ajuste():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+    return render_template('upload.html')
 
 
 @app.route('/actualizar')
@@ -130,7 +156,7 @@ def actualizar():
 @app.route('/procesar', methods=['POST'])
 def procesar_transferencia():
     if not request.json:
-        return jsonify({'success': False, 'message': 'No data provided'}), 400
+        return jsonify({'success': False, 'message': 'No se obtuvieron datos para procesar'}), 400
 
     fila = request.json
     tabla = fila.get('tabla')  # Obtenemos la tabla seleccionada
@@ -188,6 +214,64 @@ def procesar_transferencia():
     return procesar.process_file_send(json_data, tabla)
 
 
+@app.route('/exportar_excel')
+def exportar_excel():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+
+    tabla_seleccionada = request.args.get('tabla', 'TR_OUT')
+
+    # Obtener datos según la tabla seleccionada
+    if tabla_seleccionada == 'TR_OUT':
+        columnas, datos = get_tr_out_in.obtener_datos_tr_out()
+    else:
+        columnas, datos = get_tr_out_in.obtener_datos_tr_in()
+
+    # Crear un DataFrame de Pandas con los datos obtenidos
+    df = pd.DataFrame(datos, columns=columnas)
+
+    # Crear un buffer en memoria para el archivo Excel
+    output = io.BytesIO()
+
+    # Escribir el DataFrame a un archivo Excel en el buffer
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False)
+
+    output.seek(0)
+
+    # Enviar el archivo Excel como respuesta
+    return send_file(output, as_attachment=True, download_name=f"{tabla_seleccionada}_export.xlsx",
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
+@app.route('/exportar_procesadas_excel')
+def exportar_procesadas_excel():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+
+    tabla_seleccionada = request.args.get('tabla', 'TR_OUT')
+
+    if tabla_seleccionada == 'TR_OUT':
+        columnas, datos = get_tr_out_in.obtener_todas_tr_out_procesadas()
+    else:
+        columnas, datos = get_tr_out_in.obtener_todas_tr_in_procesadas()
+
+    # Crear un DataFrame de Pandas con los datos obtenidos
+    df = pd.DataFrame(datos, columns=columnas)
+
+    # Crear un buffer en memoria para el archivo Excel
+    output = io.BytesIO()
+
+    # Escribir el DataFrame a un archivo Excel en el buffer
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False)
+
+    output.seek(0)
+
+    # Enviar el archivo Excel como respuesta
+    return send_file(output, as_attachment=True, download_name=f"{tabla_seleccionada}_procesadas_export.xlsx", mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+
 @app.route('/log', methods=['GET', 'POST'])
 def log():
     logs = []
@@ -222,6 +306,95 @@ def log():
             logs = cursor.fetchall()
 
     return render_template('log.html', logs=logs, request=request)
+
+
+@app.route('/process', methods=['POST'])
+def process_file():
+    file = request.files['file']
+
+    if file.filename.endswith(('.xls', '.xlsx')):
+        workbook = openpyxl.load_workbook(file)
+        sheet = workbook.active
+        data = []
+
+        # Contador de filas procesadas
+        max_rows = 650
+        row_count = 0
+
+        for row in sheet.iter_rows(values_only=True):
+            data.append(row)
+            row_count += 1
+
+            # Detener la iteración si se alcanza el límite
+            if row_count >= max_rows:
+                return jsonify({'success': False, 'message': 'El número de lineas a procesar no puede se mayor a 650'})
+
+        return jsonify({'success': True, 'data': data})
+    else:
+        return jsonify({'success': False, 'message': 'Formato de archivo no válido'})
+
+
+@app.route('/process-send', methods=['POST'])
+def process_file_send():
+    try:
+        file = request.files['file']
+        app.logger.info("file: %s", file)
+        df = pd.read_excel(file)
+        data = df.to_dict(orient='records')
+
+        json_data = {
+            "DocumentType": "5",
+            "OperationType": "3",
+            "TalonarioRemito": "",
+            "ShipCarrierName": "",
+            "DriverDocumentId": "",
+            "TruckPlateId": "",
+            "TrailerPlateId": "",
+            "CompanionDocumentId": "",
+            "ShipCarrierId": "",
+            "updateStockItemRequest": []
+        }
+        for item in data:
+            json_data["updateStockItemRequest"].append({
+                "DocumentNumber": 1,
+                "ItemId": str(item['ARTICULO']),
+                "SalesDeliveryNow": float(item['CANTIDAD']),
+                "QtyShipNow": 999999,
+                "InventTransId": "",
+                "JournalNameId": "A-nivelador",
+                "InventLocationIdFrom": str(item['DEPOSITO']) + "DP",
+                "InventSiteIdFrom": "",
+                "InventLocationIdTo": "",
+                "InventSiteIdTo": "",
+                "BerObservations": ""
+            })
+
+        access_token = procesar.get_access_token()
+        headers = {"Authorization": "Bearer {}".format(access_token), "Content-Type": "application/json"}
+        api_url = API_QA
+        response = requests.post(api_url, json=json_data, headers=headers)
+        app.logger.info("API Response: %s", response.text)
+        if response.status_code == 200:
+            response_json = response.json()
+            if "message" in response_json and response_json["message"] == "Ok":
+                log_save.log_message(f"Se realizo el ajuste correctamente {json_data}")
+                return jsonify({'success': True, 'message': 'Se realizó el ajuste correctamente'})
+            else:
+                log_save.log_message(f"No se pudo realizar el ajuste {response.text}")
+                return jsonify({'success': False, 'message': response_json["message"]})
+        elif response.status_code == 500:
+            response_json = response.json()
+            return jsonify({'success': False, 'message': response.text})
+        elif response.status_code == 400:
+            response_json = response.json()
+            return jsonify({'success': False, 'message': response.text})
+        else:
+            # Devolver respuesta JSON con mensaje de error
+            return jsonify({'success': False, 'message': 'Error en la solicitud a la API'})
+    except Exception as e:
+        # Manejo de errores generales
+        app.logger.error("Error en la función process_file_send: %s", str(e))
+        return jsonify({'success': False, 'message': f'Error interno en el servidor {e}'})
 
 
 @app.route('/logout')

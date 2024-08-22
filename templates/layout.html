@@ -31,27 +31,47 @@
             display: flex;
             align-items: center;
         }
-        .error {
-            color: #dc3545;
-            background-color: #f8d7da;
-            border-left: 4px solid #dc3545;
-            padding: 5px 10px;
-            border-radius: 4px;
-        }
 
-        .btn-close {
-            background: none;
-            border: none;
-            font-size: 1.2rem;
-            float: right;
-            color: #000;
-        }
-        .fade {
-        transition: opacity 0.5s ease-in-out;
-        opacity: 0;
-        }
         .text-center {
             margin-bottom: 30px;
+        }
+         /* Estilos modernos para las tarjetas */
+        .card-modern {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            color: inherit;
+        }
+
+        .card-modern:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+            text-decoration: none;
+        }
+
+        .card-modern .card-body {
+            cursor: pointer;
+        }
+
+        /* Elimina el subrayado y asegura que el texto del enlace herede el color del contenido */
+        .text-decoration-none {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        /* Estilos para el modal de mensajes */
+        #messageModal .modal-content {
+            border-radius: 10px;
+        }
+        #messageModal .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #messageModal .modal-title {
+            font-size: 1.5rem;
+            margin: 0;
         }
     </style>
 </head>
@@ -61,19 +81,38 @@
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav ml-auto">
                 {% if 'user' in session %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('log') }}">Logs</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
-                </li>
+                    {% if request.endpoint == 'dashboard' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('log') }}">Logs</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('procesadas') }}">Procesadas</a>
+                        </li>
+                    {% elif request.endpoint == 'procesadas' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('log') }}">Logs</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('dashboard') }}">No procesadas</a>
+                        </li>
+                    {% elif request.endpoint == 'log' %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('dashboard') }}">No procesadas</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('procesadas') }}">Procesadas</a>
+                        </li>
+                    {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('login') }}">Inicio</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+                    </li>
                 {% else %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('login') }}">Login</a>
-                </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+                    </li>
                 {% endif %}
             </ul>
         </div>
@@ -82,35 +121,18 @@
         {% block content %}{% endblock %}
     </div>
 
-    <!-- Modal para mensajes de éxito -->
-    <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true">
+    <!-- Modal Unificado para Mensajes -->
+    <div class="modal fade" id="messageModal" tabindex="-1" aria-labelledby="messageModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="successModalLabel">Éxito</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <h5 class="modal-title" id="messageModalLabel">Mensaje</h5>
+                    <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close">
                         <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div class="modal-body">
-                    <p id="successMessage"></p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal para mensajes de error -->
-    <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="errorModalLabel">Error</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <p id="errorMessage"></p>
+                    <p id="messageContent"></p>
                 </div>
             </div>
         </div>
@@ -124,16 +146,27 @@
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
-                        {% if category == 'success' %}
-                            $('#successMessage').text("{{ message }}");
-                            $('#successModal').modal('show');
-                            setTimeout(function() {
-                                $('#successModal').modal('hide');
-                            }, 2000);
-                        {% elif category == 'danger' %}
-                            $('#errorMessage').text("{{ message }}");
-                            $('#errorModal').modal('show');
-                        {% endif %}
+                        $('#messageContent').text("{{ message }}");
+                        if (category == 'success') {
+                            $('#messageModalLabel').text("Éxito");
+                            $('#messageModal .modal-content').addClass('bg-success text-white');
+                        } else if (category == 'danger') {
+                            $('#messageModalLabel').text("Error");
+                            $('#messageModal .modal-content').addClass('bg-danger text-white');
+                        } else if (category == 'warning') {
+                            $('#messageModalLabel').text("Advertencia");
+                            $('#messageModal .modal-content').addClass('bg-warning text-dark');
+                        } else if (category == 'info') {
+                            $('#messageModalLabel').text("Información");
+                            $('#messageModal .modal-content').addClass('bg-info text-white');
+                        } else {
+                            $('#messageModalLabel').text("Mensaje");
+                            $('#messageModal .modal-content').removeClass('bg-success bg-danger bg-warning bg-info text-white text-dark');
+                        }
+                        $('#messageModal').modal('show');
+                        setTimeout(function() {
+                            $('#messageModal').modal('hide');
+                        }, 2500);
                     {% endfor %}
                 {% endif %}
             {% endwith %}

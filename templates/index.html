@@ -3,28 +3,17 @@
 {% block title %}Control de Inventarios - Inicio{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h1 class="text-center mb-4">Bienvenido, {{ user }}</h1>
-    <div class="row">
+<div class="container mt-5">
+    <h1 class="text-center mb-5">¡Hola, {{ user }}!</h1>
+    <div class="row justify-content-center">
         <!-- Tarjeta para Transferencias No Procesadas -->
         <div class="col-md-6 mb-4">
-            <div class="card h-100">
-                <div class="card-body">
-                    <h5 class="card-title">Transferencias No Procesadas</h5>
-                    <p class="card-text">Accede a la aplicación para gestionar las transferencias que aún no han sido procesadas.</p>
-                    <a href="{{ url_for('dashboard') }}" class="btn btn-primary">Ir a Transferencias</a>
+            <a href="{{ url_for('dashboard') }}" class="card h-100 card-modern text-decoration-none">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Monitor de transferencias</h5>
+                    <p class="card-text">Accede a la aplicación para gestionar las transferencias que aún no han sido procesadas en SAP.</p>
                 </div>
-            </div>
-        </div>
-        <!-- Tarjeta para Ajuste Metalúrgico -->
-        <div class="col-md-6 mb-4">
-            <div class="card h-100">
-                <div class="card-body">
-                    <h5 class="card-title">Ajuste Metalúrgico</h5>
-                    <p class="card-text">Accede a la aplicación para realizar ajustes en los datos metalúrgicos.</p>
-                    <a href="{{ url_for('ajuste_meta') }}" class="btn btn-primary">Ir a Ajuste Metalúrgico</a>
-                </div>
-            </div>
+            </a>
         </div>
     </div>
 </div>

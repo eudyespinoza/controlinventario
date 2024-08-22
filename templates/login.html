@@ -17,4 +17,37 @@
         <button type="submit" class="btn btn-primary">Ingresar</button>
     </form>
 </div>
+
+<script>
+function mostrarMensaje(mensaje, categoria) {
+    $('#messageContent').text(mensaje);
+    if (categoria == 'success') {
+        $('#messageModalLabel').text("Éxito");
+        $('#messageModal .modal-content').addClass('bg-success text-white');
+    } else if (categoria == 'danger') {
+        $('#messageModalLabel').text("Error");
+        $('#messageModal .modal-content').addClass('bg-danger text-white');
+    } else if (categoria == 'warning') {
+        $('#messageModalLabel').text("Advertencia");
+        $('#messageModal .modal-content').addClass('bg-warning text-dark');
+    } else if (categoria == 'info') {
+        $('#messageModalLabel').text("Información");
+        $('#messageModal .modal-content').addClass('bg-info text-white');
+    }
+    $('#messageModal').modal('show');
+    setTimeout(function() {
+        $('#messageModal').modal('hide');
+    }, 2500);
+}
+
+$(document).ready(function() {
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                mostrarMensaje("{{ message }}", "{{ category }}");
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+});
+</script>
 {% endblock %}

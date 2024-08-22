@@ -1,0 +1,156 @@
+{% extends 'layout.html' %}
+
+{% block title %}Transferencias Procesadas - Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">Transferencias Procesadas</h2>
+
+    <!-- Sección de Selección de Tabla y Consultar -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="form-group">
+                <label for="tabla">Seleccionar Tabla</label>
+                <select class="form-control" id="tabla" name="tabla" onchange="consultarTabla()">
+                    <option value="TR_OUT" {% if tabla_seleccionada == 'TR_OUT' %}selected{% endif %}>Transferencias Salientes (TR_OUT)</option>
+                    <option value="TR_IN" {% if tabla_seleccionada == 'TR_IN' %}selected{% endif %}>Transferencias Entrantes (TR_IN)</option>
+                </select>
+            </div>
+            <button type="button" class="btn btn-primary" onclick="consultarTabla()">Consultar</button>
+        </div>
+    </div>
+
+    <!-- Sección de Filtros -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="form-group">
+                <label for="fecha_desde">Fecha Desde</label>
+                <input type="date" class="form-control" id="fecha_desde" name="fecha_desde">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="form-group">
+                <label for="fecha_hasta">Fecha Hasta</label>
+                <input type="date" class="form-control" id="fecha_hasta" name="fecha_hasta">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="form-group">
+                <label for="origen">Origen</label>
+                <input type="text" class="form-control" id="origen" name="origen" placeholder="Origen">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="form-group">
+                <label for="destino">Destino</label>
+                <input type="text" class="form-control" id="destino" name="destino" placeholder="Destino">
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección de Botones -->
+    <div class="row mb-4">
+        <div class="col">
+            <button type="button" class="btn btn-primary" onclick="filtrarTabla()">Filtrar</button>
+            <button type="button" class="btn btn-success ml-2" onclick="exportarExcel()">Exportar a Excel</button>
+        </div>
+    </div>
+
+    <!-- Tabla de Resultados -->
+    <div class="table-responsive">
+        <table id="tabla-procesadas" class="table table-striped table-bordered table-hover">
+            <thead class="thead-light">
+                <tr>
+                    {% if tabla_seleccionada == 'TR_OUT' %}
+                        <th scope="col">Fecha Procesada</th>
+                        <th scope="col">Fecha y Hora</th>
+                        <th scope="col">Documento</th>
+                        <th scope="col">Remito</th>
+                        <th scope="col">Material Applog</th>
+                        <th scope="col">Cantidad</th>
+                        <th scope="col">Origen</th>
+                        <th scope="col">Destino</th>
+                        <th scope="col">Error</th>
+                        <th scope="col">Posición</th>
+                    {% elif tabla_seleccionada == 'TR_IN' %}
+                        <th scope="col">Fecha Procesada</th>
+                        <th scope="col">Fecha y Hora</th>
+                        <th scope="col">Documento</th>
+                        <th scope="col">Material Applog</th>
+                        <th scope="col">Cantidad</th>
+                        <th scope="col">Destino</th>
+                        <th scope="col">Error</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for fila in datos %}
+                <tr>
+                    {% for columna in columnas %}
+                        <td>{{ fila[columna] }}</td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function consultarTabla() {
+    const tablaSeleccionada = document.getElementById('tabla').value;
+    window.location.href = `/procesadas?tabla=${tablaSeleccionada}`;
+}
+
+function filtrarTabla() {
+    const tabla = document.getElementById('tabla-procesadas').getElementsByTagName('tbody')[0];
+    const fechaDesde = new Date(document.getElementById('fecha_desde').value);
+    const fechaHasta = new Date(document.getElementById('fecha_hasta').value);
+    const origen = document.getElementById('origen').value.toLowerCase();
+    const destino = document.getElementById('destino').value.toLowerCase();
+
+    for (let i = 0; i < tabla.rows.length; i++) {
+        const fila = tabla.rows[i];
+        const fechaTexto = fila.cells[0].innerText.trim();  // Texto de la fecha en la primera columna
+        const [dia, mes, anioHora] = fechaTexto.split('/');
+        const [anio, hora] = anioHora.split(' ');
+        const fechaProcesada = new Date(`${anio}-${mes}-${dia}T${hora}`);
+
+        let origenTexto, destinoTexto;
+
+        if (document.getElementById('tabla').value === 'TR_OUT') {
+            origenTexto = fila.cells[6].innerText.toLowerCase();  // Origen en la columna 7 para TR_OUT
+            destinoTexto = fila.cells[7].innerText.toLowerCase(); // Destino en la columna 8 para TR_OUT
+        } else {
+            origenTexto = "";  // No hay origen en TR_IN, lo dejamos vacío
+            destinoTexto = fila.cells[5].innerText.toLowerCase(); // Destino en la columna 6 para TR_IN
+        }
+
+        let mostrarFila = true;
+
+        if (fechaDesde && fechaProcesada < fechaDesde) {
+            mostrarFila = false;
+        }
+
+        if (fechaHasta && fechaProcesada > fechaHasta) {
+            mostrarFila = false;
+        }
+
+        if (origen && !origenTexto.includes(origen)) {
+            mostrarFila = false;
+        }
+
+        if (destino && !destinoTexto.includes(destino)) {
+            mostrarFila = false;
+        }
+
+        fila.style.display = mostrarFila ? '' : 'none';
+    }
+}
+
+function exportarExcel() {
+    const tablaSeleccionada = document.getElementById('tabla').value;
+    window.location.href = `/exportar_procesadas_excel?tabla=${tablaSeleccionada}`;
+}
+</script>
+{% endblock %}

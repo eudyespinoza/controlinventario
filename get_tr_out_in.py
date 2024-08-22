@@ -8,7 +8,7 @@ def conectar_db():
     try:
         conexion = pyodbc.connect(
             'DRIVER={ODBC Driver 17 for SQL Server};'
-            f'SERVER={app.SQL_SERVER};'
+            f'SERVER={app.SQL_SERVER_QA};'
             f'DATABASE={app.SQL_DATABASE};'
             f'UID={app.SQL_USERNAME};'
             f'PWD={app.SQL_PASSWORD}'
@@ -49,7 +49,7 @@ def convertir_error_legible(error):
     elif "material no concuerdan con los datos de pedido" in error:
         return "Error en la TR. Ver con Analista de Distribución"
     else:
-        return "Error desconocido. Intente de nuevo."
+        return "Error de sistemas. Intente de nuevo."
 
 
 def obtener_datos_tr_out():
@@ -92,5 +92,51 @@ def obtener_datos_tr_in():
     for fila in filas:
         registro = {columnas[i]: fila[i] for i in range(len(columnas))}
         registro['error'] = convertir_error_legible(registro['error'])
+        datos.append(registro)
+    return columnas, datos
+
+
+def obtener_todas_tr_out_procesadas():
+    conexion = conectar_db()
+    cursor = conexion.cursor()
+    consulta = """
+        SELECT fecha_procesada, fecha, documento, remito, material_applog, cantidad, origen, destino, error, posicion
+        FROM TR_OUT 
+        WHERE procesada = 1
+    """
+    cursor.execute(consulta)
+    filas = cursor.fetchall()
+    columnas = [column[0] for column in cursor.description]
+    conexion.close()
+
+    datos = []
+    for fila in filas:
+        registro = {columnas[i]: fila[i] for i in range(len(columnas))}
+        registro['error'] = convertir_error_legible(registro['error'])
+        registro['fecha'] = registro['fecha'].strftime('%d/%m/%Y %H:%M:%S')
+        registro['fecha_procesada'] = registro['fecha_procesada'].strftime('%d/%m/%Y %H:%M:%S')
+        datos.append(registro)
+    return columnas, datos
+
+
+def obtener_todas_tr_in_procesadas():
+    conexion = conectar_db()
+    cursor = conexion.cursor()
+    consulta = """
+        SELECT fecha_procesada, fecha, documento, material_applog, cantidad, destino, error
+        FROM TR_IN 
+        WHERE procesada = 1
+    """
+    cursor.execute(consulta)
+    filas = cursor.fetchall()
+    columnas = [column[0] for column in cursor.description]
+    conexion.close()
+
+    datos = []
+    for fila in filas:
+        registro = {columnas[i]: fila[i] for i in range(len(columnas))}
+        registro['error'] = convertir_error_legible(registro['error'])
+        registro['fecha'] = registro['fecha'].strftime('%d/%m/%Y %H:%M:%S')
+        registro['fecha_procesada'] = registro['fecha_procesada'].strftime('%d/%m/%Y %H:%M:%S')
         datos.append(registro)
     return columnas, datos
