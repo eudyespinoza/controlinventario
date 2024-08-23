@@ -45,11 +45,11 @@ def convertir_error_legible(error):
     elif "Cantidad tomada excedido" in error:
         return "Pedido no despachado o Error en despacho"
     elif "500" in error:
-        return "Error 500. Intente más tarde"
+        return "Error de comunicación entre los sistemas. Intente más tarde"
     elif "material no concuerdan con los datos de pedido" in error:
-        return "Error en la TR. Ver con Analista de Distribución"
+        return "OT creada con múltiples destinos. Ver con Analista Distribución"
     else:
-        return "Error de sistemas. Intente de nuevo."
+        return "Error de comunicació entre los sistemas. Intente más tarde"
 
 
 def obtener_datos_tr_out():
@@ -100,7 +100,7 @@ def obtener_todas_tr_out_procesadas():
     conexion = conectar_db()
     cursor = conexion.cursor()
     consulta = """
-        SELECT fecha_procesada, fecha, documento, remito, material_applog, cantidad, origen, destino, error, posicion
+        SELECT fecha_procesada, fecha, documento, remito, material_applog, cantidad, origen, destino, error, posicion, usuario_procesada
         FROM TR_OUT 
         WHERE procesada = 1
     """
@@ -123,7 +123,7 @@ def obtener_todas_tr_in_procesadas():
     conexion = conectar_db()
     cursor = conexion.cursor()
     consulta = """
-        SELECT fecha_procesada, fecha, documento, material_applog, cantidad, destino, error
+        SELECT fecha_procesada, fecha, documento, material_applog, cantidad, destino, error, usuario_procesada
         FROM TR_IN 
         WHERE procesada = 1
     """

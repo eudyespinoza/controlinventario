@@ -3,6 +3,7 @@ import app
 import logging
 import log_save
 import datetime
+from flask import session
 
 
 def conectar_db():
@@ -28,6 +29,7 @@ def marcar_como_procesada(tabla, documento, material_applog, remito=None):
         conexion = conectar_db()
         cursor = conexion.cursor()
         ahora = datetime.datetime.now()
+        usuario = session.get('user')
 
         # Construir la consulta y los parámetros según la tabla
         if tabla == 'TR_OUT':
@@ -36,19 +38,19 @@ def marcar_como_procesada(tabla, documento, material_applog, remito=None):
             concat_out = f"ZTRA{documento}{material_applog}{remito}"
             consulta = f"""
             UPDATE [DB_ENUM].[dbo].[TR_OUT]
-            SET [procesada] = ?, [fecha_procesada] = ?
+            SET [procesada] = ?, [fecha_procesada] = ?, [usuario_procesada] = ?
             WHERE concat = ?
             """
-            parametros = (1, ahora, concat_out)
+            parametros = (1, ahora, concat_out, usuario)
 
         elif tabla == 'TR_IN':
             concat_in = f"ZTRA{documento}{material_applog}"
             consulta = f"""
             UPDATE [DB_ENUM].[dbo].[TR_IN]
-            SET [procesada] = ?, [fecha_procesada] = ?
+            SET [procesada] = ?, [fecha_procesada] = ?, [usuario_procesada] = ?
             WHERE concat = ?
             """
-            parametros = (1, ahora, concat_in)
+            parametros = (1, ahora, concat_in, usuario)
 
         else:
             raise ValueError("Tabla no soportada. Utilice 'TR_OUT' o 'TR_IN'.")
