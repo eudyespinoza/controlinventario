@@ -1,336 +1,39 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cargar Archivo</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap">
-    <style>
-        body {
-            font-family: 'Roboto', sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #f4f4f4;
-        }
+{% extends "layout.html" %}
 
-        .container {
-            background-color: #fff;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            width: 90%;
-            max-width: 600px;
-            text-align: center;
-        }
+{% block title %}
+    Cargar Archivo - Control de Inventario
+{% endblock %}
 
-        h2 {
-            margin-top: 0;
-            text-align: center;
-        }
+{% block content %}
+<div class="container">
+    <h2 class="text-center">Cargar Archivo</h2>
+    <div class="d-flex justify-content-center">
+        <input type="file" id="file-input" accept=".xls, .xlsx" class="form-control" required style="max-width: 300px;">
+        <button id="preview-btn" class="btn btn-primary ml-3">Vista Previa</button>
+    </div>
 
-        .overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 9998;
-            display: none;
-        }
-
-        .popup {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            padding: 20px;
-            background-color: #fff;
-            border: 2px solid #007bff;
-            border-radius: 5px;
-            z-index: 9999;
-            display: none;
-        }
-
-        .popup-message {
-            background-color: #007bff;
-            color: #fff;
-            padding: 15px;
-            border-radius: 5px;
-            text-align: center;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 1000;
-            display: none;
-        }
-
-        .popup-error {
-            background-color: #ffffff;
-            color: #000;
-            font-size: 11px;
-            max-height: 50vh; /* Limita la altura máxima */
-            overflow-y: auto; /* Agrega barra de desplazamiento vertical si es necesario */
-        }
-
-        .popup-close-btn {
-            background-color: #CC2424;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            padding: 10px;
-            margin-top: 10px;
-        }
-
-        input[type="file"] {
-            margin-bottom: 10px;
-            display: block;
-            width: 100%;
-            padding: 10px;
-            border-radius: 5px;
-            border: 2px solid #ddd;
-            box-sizing: border-box;
-        }
-
-        button {
-            padding: 10px 20px;
-            background-color: #CC2424;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-
-        button[disabled] {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
-
-        button:hover {
-            background-color: #FA0000;
-        }
-
-        .error {
-            color: #ff0000;
-            margin-top: 5px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            border-radius: 5px;
-            overflow-y: auto;
-        }
-
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-        }
-
-        th {
-            background-color: #f2f2f2;
-        }
-
-        #preview-container {
-            margin-top: 20px;
-            text-align: center;
-        }
-
-        #send-btn {
-            margin-top: 30px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .table-header {
-            position: sticky;
-            top: 0;
-            background-color: #fff;
-            z-index: 1;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                width: 95%;
-            }
-            input[type="file"], button {
-                width: 100%;
-            }
-        }
-
-        @media (max-width: 480px) {
-            input[type="file"], button {
-                width: 90%;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h2>Cargar Archivo</h2>
-        <input type="file" id="file-input" accept=".xls, .xlsx" required>
-        <button id="preview-btn">Vista Previa</button>
-
-        <div id="preview-container" style="display: none;">
-            <h2>Previsualización de Datos</h2>
-            <div id="data-table-container"></div>
-            <div id="pagination-container" style="margin-top: 2px; display: none;">
-                <button id="prev-btn" style="margin-top: 15px;">Anterior</button>
-                <span id="pagination-info" style="margin-top: 15px;"></span>
-                <button id="next-btn" style="margin-top: 15px;">Siguiente</button>
-            </div>
-            <div id="line-count" style="margin-top: 15px;"></div>
-            <button id="send-btn" style="display: none;">Hacer Ajuste</button>
+    <div id="preview-container" class="mt-4" style="display: none;">
+        <h2 class="text-center">Previsualización de Datos</h2>
+        <div id="data-table-container" class="table-responsive"></div>
+        <div id="pagination-container" class="d-flex justify-content-center mt-3" style="display: none;">
+            <button id="prev-btn" class="btn btn-secondary">Anterior</button>
+            <span id="pagination-info" class="mx-2"></span>
+            <button id="next-btn" class="btn btn-secondary">Siguiente</button>
+        </div>
+        <div id="line-count" class="text-center mt-3"></div>
+        <div class="d-flex justify-content-center">
+            <button id="send-btn" class="btn btn-danger mt-3" style="display: none;">Hacer Ajuste</button>
         </div>
     </div>
-    <div id="overlay" class="overlay"></div>
-    <div id="popup-error" class="popup popup-error">
-        <p id="popup-error-message"></p>
-        <button class="popup-close-btn" onclick="closeErrorPopup()">Cerrar</button>
-    </div>
-    <div id="popup-message" class="popup-message">Realizando Ajustes</div>
+</div>
 
-    <script>
-    var sheetData;
-    var currentPage = 0;
-    var pageSize = 6;
-    var file;
+<div id="overlay" class="overlay"></div>
+<div id="popup-error" class="popup popup-error">
+    <p id="popup-error-message"></p>
+    <button class="popup-close-btn" onclick="closeErrorPopup()">Cerrar</button>
+</div>
+<div id="popup-message" class="popup-message" style="display: none;">Realizando Ajustes</div>
+{% endblock %}
 
-    document.getElementById("preview-btn").addEventListener("click", function() {
-        var fileInput = document.getElementById("file-input");
-        file = fileInput.files[0];
-        if (file) {
-            var formData = new FormData();
-            formData.append('file', file);
-            fetch('/process', {
-                method: 'POST',
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    sheetData = data.data;
-                    showPage();
-                    document.getElementById("send-btn").disabled = false;
-                    document.getElementById("send-btn").style.backgroundColor = '#CC2424';
-                    document.getElementById("preview-container").style.display = "block";
-                } else {
-                    showErrorPopup('Error al procesar el archivo: ' + data.message);
-                }
-            })
-            .catch(error => {
-                showErrorPopup('Error al procesar el archivo: ' + error.message);
-            });
-        }
-    });
-
-    document.getElementById("next-btn").addEventListener("click", function() {
-        currentPage++;
-        showPage();
-    });
-
-    document.getElementById("prev-btn").addEventListener("click", function() {
-        if (currentPage >= 1) {
-            currentPage--;
-            showPage();
-        }
-    });
-
-    document.getElementById("send-btn").addEventListener("click", function() {
-        var sendBtn = document.getElementById("send-btn");
-        sendBtn.disabled = true;
-        sendBtn.style.backgroundColor = '#ccc';
-        document.getElementById("overlay").style.display = "block";
-        document.getElementById("popup-message").style.display = "block";
-        var fileInput = document.getElementById("file-input");
-        var file = fileInput.files[0];
-        var formData = new FormData();
-        formData.append('file', file);
-
-        fetch('/process-send', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById("popup-message").style.display = "none";
-            document.getElementById("overlay").style.display = "none";
-            if (data.success) {
-                showErrorPopup(data.message, true);
-                setTimeout(function() {
-                    window.location.reload();
-                }, 3500);
-            } else {
-                showErrorPopup(data.message);
-            }
-        })
-        .catch(error => {
-            document.getElementById("popup-message").style.display = "none";
-            document.getElementById("overlay").style.display = "none";
-            showErrorPopup("Error al enviar datos: " + error.message);
-        })
-        .finally(() => {
-            sendBtn.disabled = false;
-            sendBtn.style.backgroundColor = '#CC2424';
-        });
-    });
-
-    function showErrorPopup(message) {
-        var popup = document.getElementById('popup-error');
-        var messageElement = document.getElementById('popup-error-message');
-        var overlay = document.getElementById('overlay');
-        messageElement.textContent = message;
-        popup.style.display = 'block';
-        overlay.style.display = 'block';
-    }
-
-    function closeErrorPopup() {
-        var popup = document.getElementById('popup-error');
-        var overlay = document.getElementById('overlay');
-        popup.style.display = 'none';
-        overlay.style.display = 'none';
-    }
-
-    function showPage() {
-        var start = currentPage * pageSize;
-        var end = start + pageSize;
-        var pageData = sheetData.slice(start, end);
-
-        if (pageData.length > 1) {
-            var html = "<table>";
-            html += "<tr class='table-header'><th>DEPOSITO</th><th>ARTÍCULO</th><th>CANTIDAD</th></tr>";
-            for (var i = 1; i < pageData.length; i++) {
-                html += "<tr>";
-                for (var j = 0; j < pageData[i].length; j++) {
-                    html += "<td>" + pageData[i][j] + "</td>";
-                }
-                html += "</tr>";
-            }
-            html += "</table>";
-            document.getElementById("data-table-container").innerHTML = html;
-
-            var rowCount = sheetData.length - 1;
-            var pageCount = Math.ceil(rowCount / pageSize);
-            document.getElementById("pagination-info").innerText = "Página " + (currentPage + 1) + " de " + pageCount;
-            document.getElementById("pagination-container").style.display = "block";
-            document.getElementById("send-btn").style.display = "block";
-            document.getElementById("line-count").innerText = "Cantidad de líneas cargadas: " + rowCount;
-            document.getElementById("line-count").style.display = "block";
-        } else {
-            if (currentPage >= 1) {
-                currentPage--;
-                showPage();
-            } else {
-                return;
-            }
-        }
-    }
-    </script>
-</body>
-</html>
+{% block scripts %}
+{% endblock %}

@@ -142,35 +142,166 @@
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script>
-        $(document).ready(function() {
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        $('#messageContent').text("{{ message }}");
-                        if (category == 'success') {
-                            $('#messageModalLabel').text("Éxito");
-                            $('#messageModal .modal-content').addClass('bg-success text-white');
-                        } else if (category == 'danger') {
-                            $('#messageModalLabel').text("Error");
-                            $('#messageModal .modal-content').addClass('bg-danger text-white');
-                        } else if (category == 'warning') {
-                            $('#messageModalLabel').text("Advertencia");
-                            $('#messageModal .modal-content').addClass('bg-warning text-dark');
-                        } else if (category == 'info') {
-                            $('#messageModalLabel').text("Información");
-                            $('#messageModal .modal-content').addClass('bg-info text-white');
-                        } else {
-                            $('#messageModalLabel').text("Mensaje");
-                            $('#messageModal .modal-content').removeClass('bg-success bg-danger bg-warning bg-info text-white text-dark');
-                        }
-                        $('#messageModal').modal('show');
-                        setTimeout(function() {
-                            $('#messageModal').modal('hide');
-                        }, 2500);
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
+var currentPage = 0;
+var pageSize = 6;
+var sheetData = [];
+var headers = [];
+
+document.getElementById("preview-btn").addEventListener("click", function() {
+    var fileInput = document.getElementById("file-input");
+    var file = fileInput.files[0];
+    if (file) {
+        var formData = new FormData();
+        formData.append('file', file);
+
+        fetch('/process', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                headers = data.headers;  // Guardamos los encabezados
+                sheetData = data.data;  // Guardamos los datos
+                currentPage = 0;  // Reinicia a la primera página
+                showPage();
+                document.getElementById("send-btn").disabled = false;
+                document.getElementById("send-btn").style.backgroundColor = '#CC2424';
+                document.getElementById("preview-container").style.display = "block";
+            } else {
+                showErrorPopup(data.message);
+            }
+        })
+        .catch(error => {
+            showErrorPopup('Error al procesar la solicitud: ' + error.message);
         });
+    } else {
+        showErrorPopup('Por favor, seleccione un archivo para cargar.');
+    }
+});
+
+document.getElementById("send-btn").addEventListener("click", function() {
+    var sendBtn = document.getElementById("send-btn");
+    sendBtn.disabled = true;
+    sendBtn.style.backgroundColor = '#ccc';
+
+    document.getElementById("overlay").style.display = "block";
+    document.getElementById("popup-message").style.display = "block";
+
+    var fileInput = document.getElementById("file-input");
+    var file = fileInput.files[0];
+    var formData = new FormData();
+    formData.append('file', file);
+
+    fetch('/process-send', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        document.getElementById("popup-message").style.display = "none";
+        document.getElementById("overlay").style.display = "none";
+        if (response.redirected) {
+            window.location.href = response.url;
+        } else {
+            return response.json();
+        }
+    })
+    .then(data => {
+        if (data && data.success) {
+            showErrorPopup(data.message, true);
+            setTimeout(function() {
+                window.location.reload();
+            }, 3500);
+        } else if (data) {
+            showErrorPopup(data.message);
+        }
+    })
+    .catch(error => {
+        document.getElementById("popup-message").style.display = "none";
+        document.getElementById("overlay").style.display = "none";
+        showErrorPopup("Error al enviar datos: " + error.message);
+    })
+    .finally(() => {
+        sendBtn.disabled = false;
+        sendBtn.style.backgroundColor = '#CC2424';
+    });
+});
+
+document.getElementById("prev-btn").addEventListener("click", function() {
+    if (currentPage > 0) {
+        currentPage--;
+        showPage();
+    }
+});
+
+document.getElementById("next-btn").addEventListener("click", function() {
+    if ((currentPage + 1) * pageSize < sheetData.length) {
+        currentPage++;
+        showPage();
+    }
+});
+
+function showPage() {
+    var start = currentPage * pageSize;
+    var end = start + pageSize;
+    var pageData = sheetData.slice(start, end);
+
+    if (pageData.length > 0) {
+        var html = "<table class='table table-bordered'>";
+        html += "<tr class='table-header'>";
+
+        // Agregamos los encabezados al principio
+        for (var i = 0; i < headers.length; i++) {
+            html += "<th>" + headers[i] + "</th>";
+        }
+        html += "</tr>";
+
+        for (var i = 0; i < pageData.length; i++) {
+            html += "<tr>";
+            for (var j = 0; j < pageData[i].length; j++) {
+                html += "<td>" + pageData[i][j] + "</td>";
+            }
+            html += "</tr>";
+        }
+        html += "</table>";
+        document.getElementById("data-table-container").innerHTML = html;
+
+        var rowCount = sheetData.length;
+        var pageCount = Math.ceil(rowCount / pageSize);
+        document.getElementById("pagination-info").innerText = "Página " + (currentPage + 1) + " de " + pageCount;
+
+        document.getElementById("pagination-container").style.display = "block";
+        document.getElementById("send-btn").style.display = "block";
+        document.getElementById("line-count").innerText = "Cantidad de líneas cargadas: " + rowCount;
+        document.getElementById("line-count").style.display = "block";
+
+        document.getElementById("prev-btn").style.display = currentPage === 0 ? "none" : "inline-block";
+        document.getElementById("next-btn").style.display = (currentPage + 1) * pageSize >= sheetData.length ? "none" : "inline-block";
+    }
+}
+
+function showErrorPopup(message) {
+    var messageElement = document.getElementById('messageContent');
+    var modalLabel = document.getElementById('messageModalLabel');
+    var modalContent = document.querySelector('#messageModal .modal-content');
+
+    messageElement.textContent = message;
+    modalLabel.textContent = "Error";
+    modalContent.classList.add('bg-danger', 'text-white');
+    modalContent.classList.remove('bg-success', 'bg-warning', 'bg-info', 'text-dark');
+
+    $('#messageModal').modal('show');
+
+    setTimeout(function() {
+        $('#messageModal').modal('hide');
+    }, 2500);
+}
+
+function closeErrorPopup() {
+    $('#messageModal').modal('hide');
+}
+
+
     </script>
 </body>
 </html>

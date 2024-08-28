@@ -114,7 +114,10 @@ def dashboard():
     else:
         columnas, datos = get_tr_out_in.obtener_datos_tr_in()
 
-    return render_template('dashboard.html', columnas=columnas, datos=datos, tabla_seleccionada=tabla_seleccionada)
+    return render_template('dashboard.html',
+                           columnas=columnas,
+                           datos=datos,
+                           tabla_seleccionada=tabla_seleccionada)
 
 
 @app.route('/procesadas')
@@ -129,7 +132,10 @@ def procesadas():
     else:
         columnas, datos = get_tr_out_in.obtener_todas_tr_in_procesadas()
 
-    return render_template('procesadas.html', columnas=columnas, datos=datos, tabla_seleccionada=tabla_seleccionada)
+    return render_template('procesadas.html',
+                           columnas=columnas,
+                           datos=datos,
+                           tabla_seleccionada=tabla_seleccionada)
 
 
 @app.route('/ajuste')
@@ -269,7 +275,10 @@ def exportar_procesadas_excel():
     output.seek(0)
 
     # Enviar el archivo Excel como respuesta
-    return send_file(output, as_attachment=True, download_name=f"{tabla_seleccionada}_procesadas_export.xlsx", mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    return send_file(output,
+                     as_attachment=True,
+                     download_name=f"{tabla_seleccionada}_procesadas_export.xlsx",
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
 
 
 @app.route('/log', methods=['GET', 'POST'])
@@ -307,31 +316,40 @@ def log():
 
     return render_template('log.html', logs=logs, request=request)
 
-
 @app.route('/process', methods=['POST'])
 def process_file():
-    file = request.files['file']
+    file = request.files.get('file')
 
-    if file.filename.endswith(('.xls', '.xlsx')):
+    if not file:
+        return jsonify({'success': False, 'message': 'No se ha seleccionado ningún archivo'})
+
+    if not file.filename.endswith(('.xls', '.xlsx')):
+        return jsonify({'success': False, 'message': 'Formato de archivo no válido'})
+
+    try:
         workbook = openpyxl.load_workbook(file)
         sheet = workbook.active
         data = []
+        headers = []
 
         # Contador de filas procesadas
         max_rows = 650
         row_count = 0
 
-        for row in sheet.iter_rows(values_only=True):
-            data.append(row)
-            row_count += 1
+        for i, row in enumerate(sheet.iter_rows(values_only=True)):
+            if i == 0:
+                headers = row  # Guardamos los encabezados
+            else:
+                data.append(row)
+                row_count += 1
+                if row_count >= max_rows:
+                    return jsonify({'success': False,
+                                    'message': 'El número de líneas a procesar no puede ser mayor a 650'})
 
-            # Detener la iteración si se alcanza el límite
-            if row_count >= max_rows:
-                return jsonify({'success': False, 'message': 'El número de lineas a procesar no puede se mayor a 650'})
+        return jsonify({'success': True, 'headers': headers, 'data': data})
 
-        return jsonify({'success': True, 'data': data})
-    else:
-        return jsonify({'success': False, 'message': 'Formato de archivo no válido'})
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Ocurrió un error al procesar el archivo: {str(e)}'})
 
 
 @app.route('/process-send', methods=['POST'])
@@ -361,7 +379,7 @@ def process_file_send():
                 "SalesDeliveryNow": float(item['CANTIDAD']),
                 "QtyShipNow": 999999,
                 "InventTransId": "",
-                "JournalNameId": "A-nivelador",
+                "JournalNameId": "Conteo Stock",
                 "InventLocationIdFrom": str(item['DEPOSITO']) + "DP",
                 "InventSiteIdFrom": "",
                 "InventLocationIdTo": "",
